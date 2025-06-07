@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Type-Reader</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .game-container {
+        width: 90%;
+        max-width: 600px;
+        text-align: center;
+      }
+      .text-display {
+        font-size: 24px;
+        line-height: 1.5;
+        margin-bottom: 20px;
+        user-select: none;
+      }
+      .char {
+        padding: 0 2px;
+      }
+      .correct {
+        color: green;
+      }
+      .incorrect {
+        color: red;
+      }
+      input {
+        width: 100%;
+        font-size: 24px;
+        padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-container">
+      <div id="text-display" class="text-display"></div>
+      <input id="input" type="text" autocomplete="off" />
+    </div>
+
+    <script>
+      const text = 'These are the words you are reading.';
+      const textDisplay = document.getElementById('text-display');
+      const inputField = document.getElementById('input');
+
+      function renderText() {
+        textDisplay.innerHTML = '';
+        for (let i = 0; i < text.length; i++) {
+          const span = document.createElement('span');
+          span.innerText = text[i];
+          span.classList.add('char');
+          textDisplay.appendChild(span);
+        }
+      }
+
+      renderText();
+
+      inputField.addEventListener('input', () => {
+        const input = inputField.value;
+        const chars = textDisplay.querySelectorAll('.char');
+        chars.forEach((charSpan, idx) => {
+          if (input[idx] == null) {
+            charSpan.classList.remove('correct', 'incorrect');
+          } else if (input[idx] === text[idx]) {
+            charSpan.classList.add('correct');
+            charSpan.classList.remove('incorrect');
+          } else {
+            charSpan.classList.add('incorrect');
+            charSpan.classList.remove('correct');
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
