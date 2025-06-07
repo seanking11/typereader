@@ -3,82 +3,273 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Type-Reader</title>
+    <title>Type-Reader Spotlight</title>
     <style>
       html,
       body {
-        height: 100%;
         margin: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
         font-family: sans-serif;
+        background: #f0f0f0;
+      }
+
+      .screen {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        width: 90%;
+        max-width: 800px;
+      }
+
+      .active {
+        display: flex;
+      }
+
+      textarea {
+        width: 100%;
+        height: 200px;
+        margin-bottom: 20px;
+        font-size: 18px;
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 18px;
+        cursor: pointer;
+        margin: 10px;
+      }
+
+      .game-container {
+        position: relative;
+        width: 80%;
+        height: 300px;
+        overflow: hidden;
+        background: white;
         display: flex;
         justify-content: center;
         align-items: center;
+        border: 1px solid #ccc;
       }
-      .game-container {
-        width: 90%;
-        max-width: 600px;
-        text-align: center;
-      }
-      .text-display {
+
+      .text-stream {
+        position: absolute;
+        white-space: nowrap;
+        display: flex;
         font-size: 24px;
-        line-height: 1.5;
-        margin-bottom: 20px;
-        user-select: none;
+        transition: transform 0.1s linear;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
       }
+
+      .cursor {
+        position: absolute;
+        width: 2px;
+        height: 1.2em;
+        background: black;
+        z-index: 2;
+        top: 54%;
+        transform: translate(-50%, -50%);
+      }
+
       .char {
-        padding: 0 2px;
+        display: inline-block;
+        white-space: pre;
+        transition: color 0.2s;
       }
+
       .correct {
         color: green;
       }
+
       .incorrect {
         color: red;
       }
-      input {
+
+      .mask-overlay {
+        position: absolute;
         width: 100%;
-        font-size: 24px;
-        padding: 10px;
+        height: 100%;
+        pointer-events: none;
+        background: radial-gradient(
+          circle at center,
+          rgba(255, 255, 255, 0) 100px,
+          rgba(255, 255, 255, 0.9) 250px
+        );
+        z-index: 1;
+        transition: background 0.2s;
+      }
+
+      .controls {
+        margin-top: 20px;
+      }
+
+      input[type='range'] {
+        width: 300px;
       }
     </style>
   </head>
   <body>
-    <div class="game-container">
-      <div id="text-display" class="text-display"></div>
-      <input id="input" type="text" autocomplete="off" />
+    <div id="textInputScreen" class="screen active">
+      <textarea id="inputText" placeholder="Paste your text here..."></textarea>
+      <button id="startBtn">Start Typereading</button>
+    </div>
+
+    <div id="typingGameScreen" class="screen">
+      <div class="game-container">
+        <div id="textStream" class="text-stream"></div>
+        <div class="cursor"></div>
+        <div id="maskOverlay" class="mask-overlay"></div>
+      </div>
+      <div class="controls">
+        <label for="blurSlider">Spotlight Radius</label><br />
+        <input id="blurSlider" type="range" min="50" max="400" value="150" />
+      </div>
+    </div>
+
+    <div id="gameEndScreen" class="screen">
+      <h2>Well done!</h2>
+      <button id="replayBtn">Replay</button>
+      <button id="mainMenuBtn">Main Menu</button>
     </div>
 
     <script>
-      const text = 'These are the words you are reading.';
-      const textDisplay = document.getElementById('text-display');
-      const inputField = document.getElementById('input');
+      const textInputScreen = document.getElementById('textInputScreen');
+      const typingGameScreen = document.getElementById('typingGameScreen');
+      const gameEndScreen = document.getElementById('gameEndScreen');
 
-      function renderText() {
-        textDisplay.innerHTML = '';
-        for (let i = 0; i < text.length; i++) {
-          const span = document.createElement('span');
-          span.innerText = text[i];
-          span.classList.add('char');
-          textDisplay.appendChild(span);
-        }
+      const startBtn = document.getElementById('startBtn');
+      const replayBtn = document.getElementById('replayBtn');
+      const mainMenuBtn = document.getElementById('mainMenuBtn');
+      const inputText = document.getElementById('inputText');
+      const textStream = document.getElementById('textStream');
+      const maskOverlay = document.getElementById('maskOverlay');
+      const blurSlider = document.getElementById('blurSlider');
+
+      const cursor = document.querySelector('.cursor');
+
+      let text = '';
+      let offsetX = 0;
+      let currentChar = 0;
+
+      startBtn.addEventListener('click', () => {
+        text = inputText.value.trim();
+        if (text.length === 0) return;
+        startGame();
+      });
+
+      replayBtn.addEventListener('click', () => {
+        startGame();
+      });
+
+      mainMenuBtn.addEventListener('click', () => {
+        showScreen(textInputScreen);
+      });
+
+      function showScreen(screen) {
+        document
+          .querySelectorAll('.screen')
+          .forEach((s) => s.classList.remove('active'));
+        screen.classList.add('active');
       }
 
-      renderText();
+      function startGame() {
+        showScreen(typingGameScreen);
+        currentChar = 0;
+        offsetX = 0;
+        renderText();
+        positionCursor();
+        document.addEventListener('keydown', handleKey);
+      }
 
-      inputField.addEventListener('input', () => {
-        const input = inputField.value;
-        const chars = textDisplay.querySelectorAll('.char');
-        chars.forEach((charSpan, idx) => {
-          if (input[idx] == null) {
-            charSpan.classList.remove('correct', 'incorrect');
-          } else if (input[idx] === text[idx]) {
-            charSpan.classList.add('correct');
-            charSpan.classList.remove('incorrect');
-          } else {
-            charSpan.classList.add('incorrect');
-            charSpan.classList.remove('correct');
-          }
+      function endGame() {
+        document.removeEventListener('keydown', handleKey);
+        showScreen(gameEndScreen);
+      }
+
+      function renderText() {
+        textStream.innerHTML = '';
+        text.split('').forEach((char) => {
+          const span = document.createElement('span');
+          span.innerText = char === ' ' ? '\u00A0' : char;
+          span.classList.add('char');
+          textStream.appendChild(span);
         });
+        centerFirstLetter();
+      }
+
+      function centerFirstLetter() {
+        const container = document.querySelector('.game-container');
+        const containerCenter = container.offsetWidth / 2;
+        const firstChar = textStream.children[0];
+        const firstCharRect = firstChar.getBoundingClientRect();
+        const streamRect = textStream.getBoundingClientRect();
+        const firstCharCenter =
+          firstCharRect.left + firstCharRect.width / 2 - streamRect.left;
+        const initialOffset = containerCenter - firstCharCenter;
+        textStream.style.transform = `translateX(${initialOffset}px)`;
+        offsetX = initialOffset;
+      }
+
+      function positionCursor() {
+        const container = document.querySelector('.game-container');
+        cursor.style.left = `${container.offsetWidth / 2}px`;
+      }
+
+      function handleKey(e) {
+        if (e.key.length > 1 && e.key !== 'Backspace') return;
+
+        const chars = textStream.querySelectorAll('.char');
+
+        if (e.key === 'Backspace') {
+          if (currentChar > 0) {
+            currentChar--;
+            chars[currentChar].classList.remove('correct', 'incorrect');
+          }
+        } else {
+          const expectedChar = text[currentChar];
+          if (e.key === expectedChar) {
+            chars[currentChar].classList.add('correct');
+          } else {
+            chars[currentChar].classList.add('incorrect');
+          }
+          currentChar++;
+
+          if (currentChar >= text.length) {
+            endGame();
+          }
+        }
+
+        moveText();
+      }
+
+      function moveText() {
+        const container = document.querySelector('.game-container');
+        const currentSpan = textStream.children[currentChar];
+        if (!currentSpan) return;
+        const containerCenter = container.offsetWidth / 2;
+        const spanCenter = currentSpan.offsetLeft + currentSpan.offsetWidth / 2;
+        const moveX = containerCenter - spanCenter;
+        textStream.style.transform = `translateX(${moveX}px)`;
+        offsetX = moveX;
+      }
+
+      blurSlider.addEventListener('input', (e) => {
+        const radius = e.target.value;
+        updateMask(radius);
       });
+
+      function updateMask(radius) {
+        maskOverlay.style.background = `radial-gradient(circle at center, rgba(255,255,255,0) ${radius}px, rgba(255,255,255,0.9) ${
+          radius * 1.8
+        }px)`;
+      }
+
+      updateMask(blurSlider.value);
     </script>
   </body>
 </html>
